@@ -28,6 +28,7 @@ jobs:
           service: ${{ env.SERVICE }}
           region: ${{ env.GCP_REGION }}
           source: ./
+          flags: --allow-unauthenticated
           env_vars: |
             Firestore__ProjectId=${{ vars.GCP_PROJECT_ID }}
             Auth__Password=${{ secrets.AUTH_PASSWORD }}
