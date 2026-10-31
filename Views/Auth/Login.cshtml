@@ -1,0 +1,34 @@
+@model LoginModel
+
+<div class="login-box">
+    <div class="brand-row">
+        <span class="brand-mark"></span>
+        <h1>Ping Keeper</h1>
+    </div>
+    <p class="sub">Sign in to your dashboard</p>
+
+    <form method="post" action="/login" class="stack">
+        @Html.AntiForgeryToken()
+        @if (!string.IsNullOrEmpty(ViewBag.ReturnUrl))
+        {
+            <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+        }
+
+        <div asp-validation-summary="ModelOnly" class="errors"></div>
+
+        <label>
+            Username
+            <input type="text" name="Username" value="@Model.Username" autofocus autocomplete="username" />
+        </label>
+        <label>
+            Password
+            <input type="password" name="Password" autocomplete="current-password" />
+        </label>
+        <button type="submit">Sign in</button>
+
+        @if (!string.IsNullOrEmpty(ViewBag.DemoHint))
+        {
+            <div class="hint">@ViewBag.DemoHint</div>
+        }
+    </form>
+</div>

@@ -1,0 +1,10 @@
+.git
+.gitignore
+.gcloudignore
+bin/
+obj/
+.vs/
+.vscode/
+.env
+*.md
+.dockerignore

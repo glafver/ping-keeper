@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "pings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "SiteId", "order": "ASCENDING" },
+        { "fieldPath": "Type", "order": "ASCENDING" },
+        { "fieldPath": "CheckedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

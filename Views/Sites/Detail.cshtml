@@ -1,0 +1,154 @@
+@model SiteDetailModel
+
+<h1 class="page">@Model.Site.Name</h1>
+<p class="sub">
+    @if (!string.IsNullOrEmpty(Model.Site.Url))
+    {
+        <a href="@Model.Site.Url" target="_blank" rel="noopener">@Model.Site.Url</a>
+    }
+    · @(Model.Site.Enabled ? "enabled" : "disabled")
+</p>
+
+<div style="display:flex; gap:.75rem; margin-bottom:1rem;">
+    <a href="/" class="btn btn-secondary">Back</a>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <a href="/sites/@Model.Site.Id/edit" class="btn btn-secondary">Edit</a>
+    }
+</div>
+
+@if (Model.Checks > 0)
+{
+    <div class="stat-cards">
+        <div class="stat tip" data-tip="Number of successful checks in this view."><div class="k">Checks</div><div class="v">@Model.Checks</div></div>
+        <div class="stat tip" data-tip="Average response time across successful checks."><div class="k">Avg</div><div class="v">@Model.AvgMs ms</div></div>
+        <div class="stat tip" data-tip="Fastest response time."><div class="k">Min</div><div class="v">@Model.MinMs ms</div></div>
+        <div class="stat tip" data-tip="Slowest response time."><div class="k">Max</div><div class="v">@Model.MaxMs ms</div></div>
+        <div class="stat tip" data-tip="95th percentile — 95% of requests were faster than this."><div class="k">P95</div><div class="v">@Model.P95Ms ms</div></div>
+    </div>
+
+    <div class="chart-box">
+        <canvas id="latencyChart" height="90"></canvas>
+        <div class="hint" style="margin-top:.6rem;">Response time over time — successful checks only.</div>
+    </div>
+}
+
+@if (Model.Pings.Count == 0)
+{
+    <p class="empty">No checks yet. Run <code>/ping</code> (Cloud Scheduler does this on schedule).</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Time (UTC)</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Code</th>
+                <th>Latency</th>
+                <th>Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.Pings)
+            {
+                <tr>
+                    <td class="mono">@p.CheckedAt.ToDateTimeOffset().ToString("MM-dd HH:mm:ss")</td>
+                    <td>@p.Type</td>
+                    <td>
+                        @if (p.Success)
+                        {
+                            <span class="badge up">up</span>
+                        }
+                        else
+                        {
+                            <span class="badge down">down</span>
+                        }
+                    </td>
+                    <td class="mono">@(p.StatusCode == 0 ? "—" : p.StatusCode.ToString())</td>
+                    <td class="mono">@(p.ResponseMs < 0 ? "—" : $"{p.ResponseMs} ms")</td>
+                    <td class="muted">@(string.IsNullOrEmpty(p.Error) ? "" : p.Error)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (Model.Checks > 0)
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+    (function () {
+        var raw = @Html.Raw(Json.Serialize(Model.Pings.Select(p => new {
+            t = p.CheckedAt.ToDateTimeOffset().ToUnixTimeMilliseconds(),
+            ms = p.ResponseMs,
+            type = p.Type,
+            ok = p.Success,
+        })));
+
+        var series = [
+            { key: 'frontend', label: 'Frontend', color: '#f6b73c' },
+            { key: 'backend', label: 'Backend', color: '#7dd3fc' },
+            { key: 'database', label: 'Database', color: '#2ee6a8' }
+        ];
+
+        var datasets = series.map(function (s) {
+            var pts = raw
+                .filter(function (p) { return p.type === s.key && p.ok; })
+                .map(function (p) { return { x: p.t, y: p.ms }; });
+            return {
+                label: s.label,
+                data: pts,
+                borderColor: s.color,
+                backgroundColor: s.color,
+                tension: 0.3,
+                pointRadius: 2,
+                pointHitRadius: 8,
+                spanGaps: true
+            };
+        }).filter(function (d) { return d.data.length > 0; });
+
+        if (datasets.length === 0) return;
+
+        new Chart(document.getElementById('latencyChart'), {
+            type: 'line',
+            data: { datasets: datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#8f90a3' } },
+                    tooltip: {
+                        caretSize: 0,
+                        padding: 8,
+                        cornerRadius: 6,
+                        callbacks: {
+                            title: function (items) {
+                                return items.length ? new Date(items[0].parsed.x).toLocaleString() : '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'linear',
+                        ticks: {
+                            color: '#8f90a3',
+                            maxTicksLimit: 8,
+                            callback: function (v) { return new Date(v).toLocaleTimeString(); }
+                        },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'ms', color: '#8f90a3' },
+                        ticks: { color: '#8f90a3' },
+                        grid: { color: 'rgba(255,255,255,0.05)' }
+                    }
+                }
+            }
+        });
+    })();
+    </script>
+}

@@ -1,0 +1,64 @@
+@model PingKeeper.Models.SiteInput
+
+<h1 class="page">Add site</h1>
+<p class="sub">Monitor a frontend URL and a health endpoint that touches the DB.</p>
+
+<form method="post" action="/sites" class="stack">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="errors"></div>
+
+    <label>
+        Name
+        <input type="text" name="Name" value="@Model.Name" required maxlength="120" placeholder="My Supabase App" />
+    </label>
+
+    <div class="stack-field">
+        <span>Frontend URL</span>
+        <div class="input-row">
+            <input type="url" name="Url" value="@Model.Url" required placeholder="https://app.example.com" />
+            <span class="switch"><input type="checkbox" name="CheckFrontend" value="true" checked="@Model.CheckFrontend" /><span class="slider"></span></span>
+        </div>
+        <input type="hidden" name="CheckFrontend" value="false" />
+    </div>
+
+    <div class="stack-field">
+        <span>Backend API URL</span>
+        <div class="input-row">
+            <input type="url" name="ApiUrl" value="@Model.ApiUrl" placeholder="https://app.example.com/api/ping (optional)" />
+            <span class="switch"><input type="checkbox" name="CheckBackend" value="true" checked="@Model.CheckBackend" /><span class="slider"></span></span>
+        </div>
+        <input type="hidden" name="CheckBackend" value="false" />
+    </div>
+
+    <div class="stack-field">
+        <span>Health / DB URL</span>
+        <div class="input-row">
+            <input type="url" name="HealthUrl" value="@Model.HealthUrl" placeholder="https://app.example.com/api/health" />
+            <span class="switch"><input type="checkbox" name="CheckDatabase" value="true" checked="@Model.CheckDatabase" /><span class="slider"></span></span>
+        </div>
+        <input type="hidden" name="CheckDatabase" value="false" />
+    </div>
+
+    <div class="stack-field">
+        <span>Check interval</span>
+        <div class="interval-row">
+            <input type="number" name="IntervalValue" value="@Model.IntervalValue" min="1" max="10080" step="1" />
+            <select name="IntervalUnit">
+                <option value="minutes" selected="@(Model.IntervalUnit == "minutes")">minutes</option>
+                <option value="hours" selected="@(Model.IntervalUnit == "hours")">hours</option>
+                <option value="days" selected="@(Model.IntervalUnit == "days")">days</option>
+                <option value="weeks" selected="@(Model.IntervalUnit == "weeks")">weeks</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="hint">
+        The health URL must perform a <strong>real DB query</strong> (e.g. <code>SELECT 1</code>),
+        otherwise the database will still fall asleep even though the frontend responds.
+    </div>
+
+    <div style="display:flex; gap:.75rem;">
+        <button type="submit">Save</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>

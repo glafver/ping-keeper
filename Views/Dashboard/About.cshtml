@@ -1,0 +1,40 @@
+<h1 class="page">About</h1>
+<p class="sub">What Ping Keeper is, and how to use it</p>
+
+<div class="about-stack">
+    <section class="card">
+        <h2>What is Ping Keeper?</h2>
+        <p>A self-hosted uptime monitor for your own sites. It keeps your projects awake and shows you at a glance whether they're healthy — frontend, backend, and database.</p>
+    </section>
+
+    <section class="card">
+        <h2>Why it exists</h2>
+        <p>Free tiers fall asleep when idle. Supabase pauses a database after ~7 days without traffic, MongoDB Atlas M0 after ~30 days, and similar hosts do the same. Ping Keeper solves the "who pings the pinger" problem: an always-on Cloud Scheduler job calls <code>/ping</code> on a schedule, which hits your sites and records the result.</p>
+    </section>
+
+    <section class="card">
+        <h2>How checks work</h2>
+        <p>Every site is checked on up to three levels:</p>
+        <ul>
+            <li><strong>Frontend</strong> — the URL users open.</li>
+            <li><strong>Backend</strong> — an API endpoint (optional).</li>
+            <li><strong>Database</strong> — a health URL that runs a real DB query (e.g. <code>SELECT 1</code>).</li>
+        </ul>
+        <p>The important part: pinging the frontend alone is not enough — the database sleeps separately. So the "Database" URL should actually touch the DB.</p>
+    </section>
+
+    <section class="card">
+        <h2>How to use it</h2>
+        <ol>
+            <li>Click <strong>+ Add site</strong> and enter a name and the URLs.</li>
+            <li>Set how often to check (the interval, in minutes).</li>
+            <li>Toggle the checks you need — e.g. turn off <strong>Frontend</strong> if you only care about the database.</li>
+            <li>The dashboard shows status, response time, uptime, and full history for every level.</li>
+        </ol>
+    </section>
+
+    <section class="card">
+        <h2>Data retention</h2>
+        <p>Ping history is kept for <strong>3 months</strong> and then automatically deleted (Firestore TTL on the <code>CheckedAt</code> field). Older checks rarely matter, and this keeps storage and queries fast.</p>
+    </section>
+</div>

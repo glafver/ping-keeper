@@ -1,0 +1,190 @@
+@model List<PingKeeper.Models.SiteStatus>
+
+@section head {
+    <meta http-equiv="refresh" content="60" />
+}
+
+@{
+    var upCount = Model.Count(s => StatusClass(s) == "up");
+    var downCount = Model.Count(s => StatusClass(s) == "down");
+    var offCount = Model.Count(s => !s.Site.Enabled);
+}
+
+<div class="meta-row">
+    <div class="chips">
+        <span class="chip"><b>@Model.Count</b> sites</span>
+        <span class="chip up"><b>@upCount</b> up</span>
+        <span class="chip down"><b>@downCount</b> down</span>
+        @if (offCount > 0)
+        {
+            <span class="chip"><b>@offCount</b> off</span>
+        }
+    </div>
+    <span class="meta-note">Rendered @DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss 'UTC'") · auto-refresh 60s</span>
+</div>
+
+@if (Model.Count == 0)
+{
+    <p class="empty">No sites yet. <a href="/sites/new">Add your first site</a>.</p>
+}
+else
+{
+    <div class="grid">
+        @foreach (var s in Model)
+        {
+            <div class="card @(s.Site.Enabled ? "" : "disabled")">
+                <div class="card-head">
+                    <span class="dot @StatusClass(s) status"></span>
+                    <h2 title="@s.Site.Name">@s.Site.Name</h2>
+                    <span class="checked tip-right" data-tip="How often this site is checked · last check time">
+                        @IntervalLabel(s.Site.IntervalMinutes)
+                        @if (s.Frontend is not null)
+                        {
+                            <text> · @s.Frontend.CheckedAt.ToDateTimeOffset().ToString("HH:mm")</text>
+                        }
+                    </span>
+                    @if (!string.IsNullOrEmpty(s.Site.Url))
+                    {
+                        <a class="url" title="@s.Site.Url" href="@s.Site.Url" target="_blank" rel="noopener">@s.Site.Url</a>
+                    }
+                </div>
+
+                <div class="checks">
+                    <div class="check">
+                        <span class="label tip" data-tip="The public URL users open in a browser.">Frontend</span>
+                        @if (!s.Site.CheckFrontend)
+                        {
+                            <span class="badge unknown"><span class="dot unknown"></span>off</span>
+                        }
+                        else
+                        {
+                            <span class="val">@Badge(s.Frontend) @Metrics(s.Frontend)</span>
+                        }
+                    </div>
+                    <div class="check">
+                        <span class="label tip" data-tip="A backend/API endpoint (optional).">Backend</span>
+                        @if (string.IsNullOrWhiteSpace(s.Site.ApiUrl))
+                        {
+                            <span class="mono muted">—</span>
+                        }
+                        else if (!s.Site.CheckBackend)
+                        {
+                            <span class="badge unknown"><span class="dot unknown"></span>off</span>
+                        }
+                        else
+                        {
+                            <span class="val">@Badge(s.Backend) @Metrics(s.Backend)</span>
+                        }
+                    </div>
+                    <div class="check">
+                        <span class="label tip" data-tip="A health URL that runs a real DB query (e.g. SELECT 1).">Database</span>
+                        @if (string.IsNullOrWhiteSpace(s.Site.HealthUrl))
+                        {
+                            <span class="mono muted">—</span>
+                        }
+                        else if (!s.Site.CheckDatabase)
+                        {
+                            <span class="badge unknown"><span class="dot unknown"></span>off</span>
+                        }
+                        else
+                        {
+                            <span class="val">@Badge(s.Database) @Metrics(s.Database)</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="uptime">
+                    @Bar("F", "Frontend", s.Site.CheckFrontend, s.Frontend, s.FrontendUptime)
+                    @Bar("B", "Backend", s.Site.CheckBackend && !string.IsNullOrWhiteSpace(s.Site.ApiUrl), s.Backend, s.BackendUptime)
+                    @Bar("DB", "Database", s.Site.CheckDatabase && !string.IsNullOrWhiteSpace(s.Site.HealthUrl), s.Database, s.DatabaseUptime)
+                </div>
+
+                <div class="card-actions">
+                    <a href="/sites/@s.Site.Id">History</a>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <a href="/sites/@s.Site.Id/edit" class="btn btn-secondary btn-sm">Edit</a>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@functions {
+    string IntervalLabel(int minutes)
+    {
+        if (minutes <= 0) minutes = IntervalDefaults.DefaultMinutes;
+        if (minutes % IntervalDefaults.MinutesPerDay == 0) return $"every {minutes / IntervalDefaults.MinutesPerDay}d";
+        if (minutes % IntervalDefaults.MinutesPerHour == 0) return $"every {minutes / IntervalDefaults.MinutesPerHour}h";
+        return $"every {minutes}m";
+    }
+
+    string StatusClass(SiteStatus s)
+    {
+        if (!s.Site.Enabled)
+        {
+            return "unknown";
+        }
+
+        var checks = new List<PingRecord?>();
+        if (s.Site.CheckFrontend) checks.Add(s.Frontend);
+        if (s.Site.CheckBackend && !string.IsNullOrWhiteSpace(s.Site.ApiUrl)) checks.Add(s.Backend);
+        if (s.Site.CheckDatabase && !string.IsNullOrWhiteSpace(s.Site.HealthUrl)) checks.Add(s.Database);
+
+        var present = checks.Where(c => c is not null).ToList();
+        if (present.Count == 0) return "unknown";
+        return present.Any(c => !c!.Success) ? "down" : "up";
+    }
+
+    IHtmlContent Badge(PingRecord? p)
+    {
+        if (p is null)
+        {
+            return Html.Raw("<span class='badge unknown'><span class='dot unknown'></span>no data</span>");
+        }
+
+        return p.Success
+            ? Html.Raw("<span class='badge up'><span class='dot up'></span>up</span>")
+            : Html.Raw("<span class='badge down'><span class='dot down'></span>down</span>");
+    }
+
+    IHtmlContent Metrics(PingRecord? p)
+    {
+        if (p is null)
+        {
+            return Html.Raw("<span class='mono muted metric'>—</span>");
+        }
+
+        if (p.Success)
+        {
+            return Html.Raw($"<span class='mono muted metric'>HTTP {p.StatusCode} · {p.ResponseMs} ms</span>");
+        }
+
+        var reason = string.IsNullOrWhiteSpace(p.Error) ? "request failed" : p.Error;
+        if (reason.Length > 44)
+        {
+            reason = reason.Substring(0, 44) + "…";
+        }
+
+        return Html.Raw($"<span class='mono muted metric'>{reason}</span>");
+    }
+
+    IHtmlContent Bar(string label, string tip, bool configured, PingRecord? p, double uptime)
+    {
+        var tipText = $"{tip} uptime — % of successful checks (last 500)";
+        if (!configured || p is null)
+        {
+            return Html.Raw(
+                $"<div class='ubar'><span class='lbl tip' data-tip='{tipText}'>{label}</span>" +
+                "<span class='bar'><span style='width:0'></span></span>" +
+                "<span class='pct'>—</span></div>");
+        }
+
+        var color = uptime >= 99 ? "var(--up)" : uptime >= 95 ? "var(--accent)" : "var(--down)";
+        return Html.Raw(
+            $"<div class='ubar'><span class='lbl tip' data-tip='{tipText}'>{label}</span>" +
+            $"<span class='bar'><span style='width:{uptime:0.#}%;background:{color}'></span></span>" +
+            $"<span class='pct'>{uptime:0.#}%</span></div>");
+    }
+}

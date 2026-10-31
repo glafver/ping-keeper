@@ -1,0 +1,111 @@
+@model SiteEditModel
+
+<h1 class="page">Edit site</h1>
+<p class="sub">@Model.Site.Name</p>
+
+<form method="post" action="/sites/@Model.Site.Id" class="stack">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="errors"></div>
+
+    <label>
+        Name
+        <input type="text" name="Name" value="@Model.Input.Name" required maxlength="120" />
+    </label>
+
+    <div class="stack-field">
+        <span>Frontend URL</span>
+        <div class="input-row">
+            <input type="url" name="Url" value="@Model.Input.Url" required />
+            <span class="switch"><input type="checkbox" name="CheckFrontend" value="true" checked="@Model.Input.CheckFrontend" /><span class="slider"></span></span>
+        </div>
+        <input type="hidden" name="CheckFrontend" value="false" />
+    </div>
+
+    <div class="stack-field">
+        <span>Backend API URL</span>
+        <div class="input-row">
+            <input type="url" name="ApiUrl" value="@Model.Input.ApiUrl" placeholder="https://app.example.com/api/ping (optional)" />
+            <span class="switch"><input type="checkbox" name="CheckBackend" value="true" checked="@Model.Input.CheckBackend" /><span class="slider"></span></span>
+        </div>
+        <input type="hidden" name="CheckBackend" value="false" />
+    </div>
+
+    <div class="stack-field">
+        <span>Health / DB URL</span>
+        <div class="input-row">
+            <input type="url" name="HealthUrl" value="@Model.Input.HealthUrl" placeholder="https://app.example.com/api/health" />
+            <span class="switch"><input type="checkbox" name="CheckDatabase" value="true" checked="@Model.Input.CheckDatabase" /><span class="slider"></span></span>
+        </div>
+        <input type="hidden" name="CheckDatabase" value="false" />
+    </div>
+
+    <div class="stack-field">
+        <span>Check interval</span>
+        <div class="interval-row">
+            <input type="number" name="IntervalValue" value="@Model.Input.IntervalValue" min="1" max="10080" step="1" />
+            <select name="IntervalUnit">
+                <option value="minutes" selected="@(Model.Input.IntervalUnit == "minutes")">minutes</option>
+                <option value="hours" selected="@(Model.Input.IntervalUnit == "hours")">hours</option>
+                <option value="days" selected="@(Model.Input.IntervalUnit == "days")">days</option>
+                <option value="weeks" selected="@(Model.Input.IntervalUnit == "weeks")">weeks</option>
+            </select>
+        </div>
+    </div>
+
+    <div style="display:flex; gap:.75rem;">
+        <button type="submit" disabled>Save changes</button>
+        <a href="/" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<div class="settings-row" style="margin-top:1.6rem;">
+    <div>
+        <div class="settings-title">Status</div>
+        <div class="muted">@(Model.Site.Enabled ? "Monitoring is on" : "Monitoring is off")</div>
+    </div>
+    <form method="post" action="/sites/@Model.Site.Id/toggle" class="inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-secondary">@(Model.Site.Enabled ? "Disable" : "Enable")</button>
+    </form>
+</div>
+
+<div class="danger-zone">
+    <div>
+        <div class="settings-title">Danger zone</div>
+        <div class="muted">Deleting removes the site and its entire history.</div>
+    </div>
+    <form method="post" action="/sites/@Model.Site.Id/delete" class="inline"
+          onsubmit="return confirm('Delete this site and its history? This cannot be undone.')">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn-danger">Delete site</button>
+    </form>
+</div>
+
+<script>
+(function () {
+    var form = document.querySelector('form.stack');
+    var btn = form ? form.querySelector('button[type="submit"]') : null;
+    if (!form || !btn) return;
+
+    var fields = form.querySelectorAll('input:not([type="hidden"]), select');
+    var initial = {};
+    fields.forEach(function (f) {
+        initial[f.name] = f.type === 'checkbox' ? f.checked : f.value;
+    });
+
+    function isDirty() {
+        for (var i = 0; i < fields.length; i++) {
+            var f = fields[i];
+            var current = f.type === 'checkbox' ? f.checked : f.value;
+            if (current !== initial[f.name]) return true;
+        }
+        return false;
+    }
+
+    function refresh() { btn.disabled = !isDirty(); }
+
+    form.addEventListener('input', refresh);
+    form.addEventListener('change', refresh);
+    refresh();
+})();
+</script>
