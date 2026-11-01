@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using PingKeeper.Models;
 using PingKeeper.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -96,6 +97,29 @@ builder.Services.AddHttpClient("ping", client =>
 });
 
 var app = builder.Build();
+
+// Seed default sites into Firestore on first run (production only; the demo store already has them).
+if (!useDemo)
+{
+    try
+    {
+        var store = app.Services.GetRequiredService<IMonitorStore>();
+        var existing = await store.GetSitesAsync(onlyEnabled: false);
+        if (existing.Count == 0)
+        {
+            foreach (var site in SeedData.Sites)
+            {
+                await store.CreateSiteAsync(site);
+            }
+
+            app.Logger.LogInformation("Seeded {Count} default sites.", SeedData.Sites.Length);
+        }
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex, "Skipped seeding default sites: {Message}", ex.Message);
+    }
+}
 
 app.UseStaticFiles();
 
