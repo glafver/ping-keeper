@@ -30,7 +30,7 @@ jobs:
           source: ./
           flags: --allow-unauthenticated
           env_vars: |
-            Firestore__ProjectId=${{ vars.GCP_PROJECT_ID }}
+            Firestore__ProjectId=ping-keeper
             Auth__Password=${{ secrets.AUTH_PASSWORD }}
             Ping__Secret=${{ secrets.PING_SECRET }}
 
