@@ -32,7 +32,7 @@ jobs:
           env_vars: |
             Firestore__ProjectId=ping-keeper
             Auth__Password=${{ secrets.AUTH_PASSWORD }}
-            Ping__Secret=${{ secrets.PING_SECRET }}
+          env_vars_update_strategy: overwrite
 
       - name: Show URL
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
